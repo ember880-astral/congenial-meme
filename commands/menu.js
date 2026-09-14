@@ -6,6 +6,8 @@ function buildMenu(pushName) {
   return `${fonts.mono(`Hi ${pushName}, I'm Cloud`)} ☁️
 ${fonts.mono("your personal utility bot.")}
 
+🌐 https://astralcloud.vercel.app/
+
 ⏰ ${fonts.mono("Time")}
 ${PREFIX}time · ${PREFIX}date
 
