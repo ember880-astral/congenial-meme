@@ -21,6 +21,9 @@ ${PREFIX}pinterest · ${PREFIX}fb · ${PREFIX}dl
 🎮 ${fonts.mono("Games")}
 ${PREFIX}chess · ${PREFIX}anime · ${PREFIX}movie
 
+🤖 ${fonts.mono("AI")}
+${PREFIX}cloud <ask anything>
+
 ⚙️ ${fonts.mono("Settings")}
 ${PREFIX}kick · ${PREFIX}promote · ${PREFIX}demote · ${PREFIX}add
 ${PREFIX}tagall · ${PREFIX}hidetag · ${PREFIX}mute · ${PREFIX}unmute

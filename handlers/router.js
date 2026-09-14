@@ -29,6 +29,7 @@ const {
   setGroupDesc,
 } = require("../commands/group/moderation");
 const { playSong } = require("../commands/downloaders/play");
+const { cmdCloud } = require("../commands/cloud");
 const {
   downloadTikTok,
   downloadInstagram,
@@ -69,6 +70,16 @@ async function handleMessage(sock, msg) {
   if (verificationHandled) return;
 
   if (!text.startsWith(PREFIX)) return;
+
+  // DMs (not groups) only work for the owner. A group JID ends in
+  // "@g.us"; anything else here (mainly "@s.whatsapp.net") is a 1:1 chat.
+  const isGroup = from.endsWith("@g.us");
+  if (!isGroup && !isOwnerMessage(msg)) return;
+
+  // React on every message that's actually going to be treated as a
+  // command (passed the prefix + DM/owner checks above) — fire-and-forget,
+  // a failed react shouldn't ever block the command itself from running.
+  sock.sendMessage(from, { react: { text: "☁️", key: msg.key } }).catch(() => {});
 
   const startMs = Date.now();
   const [rawCommand, ...args] = text.slice(PREFIX.length).trim().split(/\s+/);
@@ -297,6 +308,17 @@ async function handleMessage(sock, msg) {
       } else {
         await sock.sendMessage(from, { text: result.text }, { quoted: msg });
       }
+      break;
+    }
+
+    case "cloud": {
+      // cmdCloud can return a text / image+caption / audio / document
+      // shaped object depending on what it routed to, or null when the
+      // underlying command already sent its own message (e.g. a
+      // successful download_media call) — all are already valid Baileys
+      // message objects, so just spread whichever comes back.
+      const result = await cmdCloud(sock, msg, argText);
+      if (result) await sock.sendMessage(from, result, { quoted: msg });
       break;
     }
 

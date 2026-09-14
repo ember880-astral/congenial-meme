@@ -16,6 +16,9 @@ function bareDigits(jid) {
 function isOwnerJid(jid) {
   if (!jid) return false;
   const digits = bareDigits(jid);
+  if (process.env.OWNER_DEBUG) {
+    console.log(`[owner-check] incoming jid="${jid}" digits="${digits}" | OWNER_NUMBER="${OWNER_NUMBER}" OWNER_LID="${OWNER_LID}"`);
+  }
   if (OWNER_NUMBER && digits === OWNER_NUMBER) return true;
   if (OWNER_LID && digits === OWNER_LID) return true;
   return false;

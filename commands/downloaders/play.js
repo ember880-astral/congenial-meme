@@ -60,6 +60,22 @@ async function ensureMp3(buffer) {
 const { searchYoutube } = require("../../utils/y2mate/search");
 const { getY2mateInfo, downloadAudioUrl, downloadUrlToBuffer } = require("../../utils/y2mate/audio");
 
+// Baileys can embed a small JPEG as the audio message's thumbnail
+// (jpegThumbnail), but not every client renders that on an audio
+// message reliably. Sending the cover art as its own image with a
+// caption first is what actually shows up as a visible thumbnail
+// everywhere, so we do both.
+async function fetchThumbnailBuffer(url) {
+  if (!url) return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return Buffer.from(await res.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
 async function playSong(sock, msg, query) {
   const from = msg.key.remoteJid;
 
@@ -76,11 +92,26 @@ async function playSong(sock, msg, query) {
     return { text: `⚠️ Couldn't find that song. ${err.message}` };
   }
 
-  await sock.sendMessage(
-    from,
-    { text: `⬇️ Found *${video.title}* — downloading audio...` },
-    { quoted: msg }
-  );
+  // Fetch thumbnail once, reuse for both the cover-art message and the
+  // audio's embedded jpegThumbnail.
+  const thumbBuffer = await fetchThumbnailBuffer(video.thumbnail);
+
+  if (thumbBuffer) {
+    await sock.sendMessage(
+      from,
+      {
+        image: thumbBuffer,
+        caption: `⬇️ Found *${video.title}*${video.author ? ` — ${video.author}` : ""}\ndownloading audio...`,
+      },
+      { quoted: msg }
+    );
+  } else {
+    await sock.sendMessage(
+      from,
+      { text: `⬇️ Found *${video.title}* — downloading audio...` },
+      { quoted: msg }
+    );
+  }
 
   try {
     const info = await getY2mateInfo(video.id);
@@ -102,6 +133,7 @@ async function playSong(sock, msg, query) {
       mimetype: "audio/mpeg",
       fileName: `${title.replace(/[\\/:*?"<>|]/g, "_").slice(0, 100)}.mp3`,
       ptt: false,
+      ...(thumbBuffer ? { jpegThumbnail: thumbBuffer } : {}),
     };
   } catch (err) {
     return { text: `⚠️ Download failed: ${err.message}` };

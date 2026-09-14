@@ -501,4 +501,17 @@ function cmdPillHelp() {
   );
 }
 
-module.exports = { cmdPill, cmdPillInfo, cmdPillUrl, cmdPillDl, cmdPillHelp };
+module.exports = {
+  cmdPill,
+  cmdPillInfo,
+  cmdPillUrl,
+  cmdPillDl,
+  cmdPillHelp,
+  // Exported for commands/cloud.js — lets .cloud grab a specific chapter
+  // in one shot ("bring chapter 56 of naruto") without going through the
+  // interactive search -> pick -> download session flow above.
+  searchMangaPill,
+  fetchSeriesInfo,
+  fetchChapterImages,
+  buildPDF,
+};
