@@ -5,6 +5,8 @@ const {
   useMultiFileAuthState,
   DisconnectReason,
   fetchLatestBaileysVersion,
+  makeCacheableSignalKeyStore,
+  Browsers,
 } = require("@whiskeysockets/baileys");
 const { Boom } = require("@hapi/boom");
 const pino = require("pino");
@@ -23,12 +25,30 @@ async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
   const { version } = await fetchLatestBaileysVersion();
 
+  const silentLogger = pino({ level: "silent" });
+
   const sock = makeWASocket({
     version,
-    auth: state,
-    logger: pino({ level: "silent" }),
+    auth: {
+      creds: state.creds,
+      // Rapid signal-session key lookups during pairing can desync without
+      // this cache and cause WhatsApp to kill the connection almost
+      // immediately (a fast 401 right after the code is issued) — this is
+      // the most likely cause of the instant "couldn't link device" reject.
+      keys: makeCacheableSignalKeyStore(state.keys, silentLogger),
+    },
+    logger: silentLogger,
     printQRInTerminal: false,
-    browser: ["Astral Cloud", "Chrome", "1.0.0"],
+    // A recognized Baileys browser preset instead of a custom identity
+    // string — unrecognized browser identities are more likely to get
+    // flagged by WhatsApp's pairing endpoint.
+    browser: Browsers.ubuntu("Chrome"),
+    markOnlineOnConnect: true,
+    keepAliveIntervalMs: 25_000,
+    // The actual "60 second timer": without this Baileys falls back to a
+    // shorter default connect timeout, which can cut the handshake before
+    // pairing finishes.
+    connectTimeoutMs: 60_000,
   });
 
   // Pairing-code flow: only needed the first time, before a session exists.
@@ -41,7 +61,7 @@ async function startBot() {
         const code = await sock.requestPairingCode(BOT_NUMBER);
         console.log("═══════════════════════════════════");
         console.log(`  Pairing code: ${code}`);
-        console.log("  Enter this in WhatsApp > Linked Devices > Link with phone number");
+        console.log("  Enter this in WhatsApp > Linked Devices > Link with phone number (within 60s)");
         console.log("═══════════════════════════════════");
       } catch (err) {
         if (attempt < 5) {
